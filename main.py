@@ -44,6 +44,20 @@ def verify_password(hashed_password, provided_password):
     password, salt = hashed_password.split(':')
     return password == hashlib.sha256(salt.encode() + provided_password.encode()).hexdigest()
 
+# get the useres list
+@app.route('/users', methods=['GET'])
+def get_users():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, username FROM users')
+    users = cursor.fetchall()
+    conn.close()
+    # Convert the list of users to a dictionary for JSON response
+    user_list = [{'id': user[0], 'username': user[1]} for user in users]
+    return jsonify({'users': user_list}), 200
+
+# Signup
+
 @app.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
@@ -91,45 +105,6 @@ def signin():
 
     return jsonify({'message': 'Invalid username or password'}), 401
 
-# Route to delete a table in the database
-@app.route('/delete_table/<table_name>', methods=['DELETE'])
-def delete_table(table_name):
-    conn = sqlite3.connect('your_database.db')
-    cursor = conn.cursor()
-
-    try:
-        # Use the provided table name to construct the SQL command to delete the table
-        cursor.execute(f'DROP TABLE IF EXISTS {table_name}')
-        conn.commit()
-        conn.close()
-
-        return jsonify({'message': f'Table {table_name} deleted successfully'}), 200
-    except Exception as e:
-        conn.close()
-        return jsonify({'error': str(e)}), 500
-
-
-
-# Private route that requires authentication
-# @app.before_request
-# def check_authentication():
-#     print('user_tokens are', user_tokens)
-#     token = request.headers.get('Authorization')
-#     print('the current token is ',token)
-#     if token and token in user_tokens:
-#         g.current_user = user_tokens[token]
-#     else:
-#         g.current_user = None
-
-# # ...
-
-# # A sample private route that requires authentication
-# @app.route('/private', methods=['GET'])
-# def private_route():
-#     if g.current_user:
-#         return jsonify({'message': 'Welcome to the private route, ' + g.current_user}), 200
-#     else:
-#         return jsonify({'message': 'Unauthorized'}), 401
 
 @app.route('/private', methods=['GET'])
 def private():
@@ -140,39 +115,11 @@ def private():
         return jsonify({'message': 'Authorization token is missing'}), 401
 
     for username, user_token in user_tokens.items():
-        # print('----> the actual token is ',type(token))
-        # print('<---- the user token is ',type(user_token))
-        print('lets check ', token==user_token)
-        if token==user_token:
+        if user_token in token:
             print({'message': f'Hello, {username}! This is a private route.'})
             return jsonify({'message': f'Hello, {username}! This is a private route.'}), 200
-        # else:
-        #     print({'message': f'Hello, {username}! This is a private route.'})
-
     return jsonify({'message': 'Invalid token'}), 401
 
-#     print('The Token is \n',token)
-
-#     # # Check the token (in a real application, you'd use a library like PyJWT)
-#     # if token is None or not token == SECRET_KEY:
-#     #     return jsonify({'message': 'Unauthorized'}), 401
-
-#     # return jsonify({'message': 'Welcome to the private route!'})
-
-@app.route('/users', methods=['GET'])
-def get_users():
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, username FROM users')
-    users = cursor.fetchall()
-    conn.close()
-    # Convert the list of users to a dictionary for JSON response
-    user_list = [{'id': user[0], 'username': user[1]} for user in users]
-    return jsonify({'users': user_list}), 200
-
-
-
-# ...
 
 # Generate a unique token for password reset
 def generate_reset_token():
@@ -250,52 +197,27 @@ def delete_user(username):
     else:
         conn.close()
         return jsonify({'message': f'User with username {username} not found'}), 404
+    
+# Route to delete a table in the database
+@app.route('/delete_table/<table_name>', methods=['DELETE'])
+def delete_table(table_name):
+    conn = sqlite3.connect('your_database.db')
+    cursor = conn.cursor()
+
+    try:
+        # Use the provided table name to construct the SQL command to delete the table
+        cursor.execute(f'DROP TABLE IF EXISTS {table_name}')
+        conn.commit()
+        conn.close()
+
+        return jsonify({'message': f'Table {table_name} deleted successfully'}), 200
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
 
-# ...
-
-
-# # Password reset route
-# @app.route('/reset-password', methods=['POST'])
-# def reset_password():
-#     data = request.get_json()
-#     username = data['username']
-
-#     if username not in users:
-#         return jsonify({'message': 'Username does not exist'}), 400
-
-#     # Generate a reset token and store it for the user
-#     reset_token = generate_reset_token()
-#     reset_tokens[username] = reset_token
-
-#     return jsonify({'message': 'Password reset token generated', 'reset_token': reset_token}), 200
-
-# # Function to set a new password using the reset token
-# @app.route('/set-new-password', methods=['POST'])
-# def set_new_password():
-#     data = request.get_json()
-#     username = data['username']
-#     reset_token = data['reset_token']
-#     new_password = data['new_password']
-
-#     if username not in reset_tokens or reset_tokens[username] != reset_token:
-#         return jsonify({'message': 'Invalid reset token'}), 401
-
-#     # Update the user's password with the new password
-#     users[username] = hash_password(new_password)
-
-    # # Remove the reset token
-    # del reset_tokens[username]
-
-    # return jsonify({'message': 'Password reset successful'}), 200
-
-    # ... (Existing routes)
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
-#     # Convert the list of users to a dictionary for JSON response
-#     user_list = [{'id': user[0], 'username': user[1]} for user in users]
-#     print(jsonify({'users': user_list}), 200)
 
